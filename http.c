@@ -2,49 +2,93 @@
 
 #define MAX_METHOD_LEN 10
 #define MAX_PATH_LEN 800
+#define MAX_HTTPSTR_LEN 12
 
 int parse_first_http(const char* http_req, const int req_len)
 {
-	const char *pbuf = http_req;
 	char method[MAX_METHOD_LEN];
 	char path[MAX_PATH_LEN];
+	char http[MAX_HTTPSTR_LEN];
 	int i = 0;
+	int j = 0;
 	
 	if(http_req == NULL)
 		return -1;
 
+	printf("REQUEST-LEN: %d\n",req_len);
+
 	/* parse method-string */
-	while( (*pbuf != NULL) && (*pbuf != ' ') && (i < MAX_METHOD_LEN-1) )
+	while( http_req[i] != ' ' )
 	{
-		method[i] = *pbuf++;
-		i++;
+		if(http_req[i] == NULL)
+			return -2;
+
+		if(j >= MAX_METHOD_LEN-1)
+			return -3;
+
+		if(i == req_len)
+			return -4;
+
+		method[j++] = http_req[i++];
 	}
 
-	method[i] = '\0';
+	method[j] = '\0';
 
 	printf("METHOD: %s\n",method);
-	i = 0;
-	*pbuf++;
+	/* At the moment only GET is supported */
+	if(strcmp(method,"GET") != 0)
+		return -11;
+	j = 0;
+	i++;
 
 	/* parse path-string */
-	while( (*pbuf != NULL) && (*pbuf != ' ') && (i < MAX_PATH_LEN-1) )
+	while( http_req[i] != ' ' && (http_req[i] != NULL)) 
 	{
-		path[i] = *pbuf++;
-		i++;
+		if(j >= MAX_PATH_LEN-1)
+			return -5;
+
+		if(i == req_len)
+			return -6;
+
+		path[j++] = http_req[i++];
 	}
 
-	path[i] = '\0';
+	path[j] = '\0';
 
 	printf("PATH: %s\n",path);
 
+	/* it's a simple request */
+	if(i == req_len)
+		return 0;
 
-	return 0;
+	i++;
+	j = 0;
+
+	/* parse http-string */
+	while( http_req[i] != ' ' && http_req[i] != '\r' && (http_req[i] != NULL)) 	
+	{
+		if(j >= MAX_HTTPSTR_LEN-1)
+			return -7;
+
+		if(i == req_len)
+			return -8;
+
+		http[j++] = http_req[i++];
+	}
+
+	http[j] = '\0';
+	printf("HTTP-STR: %s\n",http);
+	if((strcmp(http,"HTTP/1.0") != 0) && (strcmp(http,"HTTP/1.1") != 0))
+		return -12;
+
+	return 1;
 }
 
 int handle_client(int connfd)
 {
 	char buffer[MAX_BUF_LEN+1];
 	int n = 0;
+	int req_type = 0;
 	
 	n = recv(connfd,buffer,MAX_BUF_LEN,0);
 	if(n <= 0)
@@ -53,23 +97,38 @@ int handle_client(int connfd)
 		close(connfd);
 		return 0;
 	}
-
-	buffer[n] = '\0';
-
-	printf("FIRST-HTTP-REQUEST: %s\n",buffer);
-
-	parse_first_http(buffer,n);
-
-	while( (n = recv(connfd,buffer,MAX_BUF_LEN,0)) > 0)
-	{
 		buffer[n] = '\0';
+		/*
 		if( (strcmp(buffer,"\r\n") == 0) || (buffer[0] == '\n'))
 			break;
-
+		*/
 		printf("HTTP-REQUEST: ..%s..\n",buffer);
-	}
 
-	if(send(connfd,"hallo",5,0) < 0)
+		req_type = parse_first_http(buffer,n);
+		if(req_type == 0)
+		{
+			printf("it's a simple request\n");
+			char sendbuf[1024] = "HTTP/1.0 200 OK\r\nServer: SimpleWebserver\r\nContent-Type: text/html\r\n\n";
+			send(connfd,sendbuf,strlen(sendbuf),0);
+			printf("HTTP-OK SENT\n");
+		}
+		else if(req_type == 1)
+		{
+			printf("it's a complex multiline request\n");
+			char sendbuf[1024] = "HTTP/1.0 200 OK\r\nServer: SimpleWebserver\r\nContent-Type: text/html\r\n\n";
+			send(connfd,sendbuf,strlen(sendbuf),0);
+			printf("HTTP-OK SENT\n");
+		}
+		else
+		{
+			fprintf(stderr,"parse_first_http() error: %d\n",req_type);
+			close(connfd);
+			return -1;
+		}
+
+
+	char sendbuf[1024] = "<html>\n<head><title>TESTSITE</title></head>\n<body>This is just a test<cr>\n</body>\n</html>\n";
+	if(send(connfd,sendbuf,strlen(sendbuf),0) < 0)
 		perror("send() error..");
 
 	close(connfd);

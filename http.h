@@ -7,7 +7,7 @@
 
 #define MAX_BUF_LEN 1024
 
-int parse_first_http(const char* http_req);
+int parse_first_http(const char* http_req,const int req_len);
 int handle_client(int connfd);
 
 #endif
