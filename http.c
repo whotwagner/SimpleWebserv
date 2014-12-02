@@ -1,9 +1,5 @@
 #include "http.h"
 
-#define MAX_METHOD_LEN 10
-#define MAX_PATH_LEN 800
-#define MAX_HTTPSTR_LEN 12
-
 int parse_first_http(const char* http_req, const int req_len)
 {
 	char method[MAX_METHOD_LEN];
@@ -15,7 +11,7 @@ int parse_first_http(const char* http_req, const int req_len)
 	if(http_req == NULL)
 		return -1;
 
-	printf("REQUEST-LEN: %d\n",req_len);
+	printf("REQUEST-LEN: %d\n",req_len); 
 
 	/* parse method-string */
 	while( http_req[i] != ' ' )
@@ -89,7 +85,9 @@ int handle_client(int connfd)
 	char buffer[MAX_BUF_LEN+1];
 	int n = 0;
 	int req_type = 0;
+	const char sendok[1024] = "HTTP/1.0 200 OK\r\nServer: SimpleWebserver\r\nContent-Type: text/html\r\n\n";
 	
+	/* recieve the http-request */
 	n = recv(connfd,buffer,MAX_BUF_LEN,0);
 	if(n <= 0)
 	{
@@ -97,34 +95,29 @@ int handle_client(int connfd)
 		close(connfd);
 		return 0;
 	}
-		buffer[n] = '\0';
-		/*
-		if( (strcmp(buffer,"\r\n") == 0) || (buffer[0] == '\n'))
-			break;
-		*/
-		printf("HTTP-REQUEST: ..%s..\n",buffer);
+	buffer[n] = '\0';
+	
+	printf("HTTP-REQUEST: ..%s..\n",buffer);
 
-		req_type = parse_first_http(buffer,n);
-		if(req_type == 0)
-		{
-			printf("it's a simple request\n");
-			char sendbuf[1024] = "HTTP/1.0 200 OK\r\nServer: SimpleWebserver\r\nContent-Type: text/html\r\n\n";
-			send(connfd,sendbuf,strlen(sendbuf),0);
-			printf("HTTP-OK SENT\n");
-		}
-		else if(req_type == 1)
-		{
-			printf("it's a complex multiline request\n");
-			char sendbuf[1024] = "HTTP/1.0 200 OK\r\nServer: SimpleWebserver\r\nContent-Type: text/html\r\n\n";
-			send(connfd,sendbuf,strlen(sendbuf),0);
-			printf("HTTP-OK SENT\n");
-		}
-		else
-		{
-			fprintf(stderr,"parse_first_http() error: %d\n",req_type);
-			close(connfd);
-			return -1;
-		}
+	req_type = parse_first_http(buffer,n);
+	if(req_type == 0)
+	{
+		printf("it's a simple request\n");
+		send(connfd,sendok,strlen(sendok),0);
+		printf("HTTP-OK SENT\n");
+	}
+	else if(req_type == 1)
+	{
+		printf("it's a complex multiline request\n");
+		send(connfd,sendok,strlen(sendok),0);
+		printf("HTTP-OK SENT\n");
+	}
+	else
+	{
+		fprintf(stderr,"parse_first_http() error: %d\n",req_type);
+		close(connfd);
+		return -1;
+	}
 
 
 	char sendbuf[1024] = "<html>\n<head><title>TESTSITE</title></head>\n<body>This is just a test<cr>\n</body>\n</html>\n";
