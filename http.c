@@ -3,13 +3,17 @@
 #define MAX_METHOD_LEN 10
 #define MAX_PATH_LEN 800
 
-int parse_first_http(const char* http_req)
+int parse_first_http(const char* http_req, const int req_len)
 {
 	const char *pbuf = http_req;
 	char method[MAX_METHOD_LEN];
 	char path[MAX_PATH_LEN];
 	int i = 0;
 	
+	if(http_req == NULL)
+		return -1;
+
+	/* parse method-string */
 	while( (*pbuf != NULL) && (*pbuf != ' ') && (i < MAX_METHOD_LEN-1) )
 	{
 		method[i] = *pbuf++;
@@ -22,6 +26,7 @@ int parse_first_http(const char* http_req)
 	i = 0;
 	*pbuf++;
 
+	/* parse path-string */
 	while( (*pbuf != NULL) && (*pbuf != ' ') && (i < MAX_PATH_LEN-1) )
 	{
 		path[i] = *pbuf++;
@@ -53,7 +58,7 @@ int handle_client(int connfd)
 
 	printf("FIRST-HTTP-REQUEST: %s\n",buffer);
 
-	parse_first_http(buffer);
+	parse_first_http(buffer,n);
 
 	while( (n = recv(connfd,buffer,MAX_BUF_LEN,0)) > 0)
 	{
