@@ -10,7 +10,14 @@
 
 #include "http.h"
 
+/* listening port */
 #define SERV_PORT 9980
+
+/* maxium of allowed clients at the same time */
+#define MAX_CLIENTS 10
+
+/* counts our clients */
+unsigned int clientcount;
 
 /* maximum length for the queue of pending connections */
 #define LISTENQ 1024
@@ -29,7 +36,10 @@ void sigchld_handler(int signo)
        child-processes.
      */
     while( (pid = waitpid(-1,&status,WNOHANG)) > 0)
+    {
+	clientcount--;
     	printf("%i exited with %i\n", pid, WEXITSTATUS(status));
+    }
 
     return;
 }
@@ -42,6 +52,8 @@ int main(int argc, char* argv[])
 	socklen_t clilen;
 	struct sockaddr_in cliaddr, servaddr;
 	struct sigaction sa; /* for wait-child-handler */
+
+	clientcount = 0;
 
 	/* Create Server-Socket of type IP( IP: 0) */
 	sockfd = socket(AF_INET,SOCK_STREAM,0);
@@ -85,6 +97,8 @@ int main(int argc, char* argv[])
 	 */
 	while(1)
 	{
+	    if(clientcount < MAX_CLIENTS)
+	    {	
 		clilen = sizeof(cliaddr);
 		/* accept connections from clients */
 		connfd = accept(sockfd, (struct sockaddr *)&cliaddr, &clilen);
@@ -103,6 +117,8 @@ int main(int argc, char* argv[])
 			close(sockfd);
 			exit(EXIT_FAILURE);
 		}
+
+		clientcount++;
 
 		/* lets create a subprocess */
 		childpid = fork();
@@ -123,6 +139,7 @@ int main(int argc, char* argv[])
 		printf("Client has PID %i\n",childpid);
 
 		close(connfd);
+	   }	
 	}
 
 	return EXIT_SUCCESS;
