@@ -1,3 +1,6 @@
+Compile it with `make`
+
+
 THIS IS JUST A SIMPLE HTTP-SERVER
 IT USES blocking accept() and fork()
 Here we handle the HTTP-Requests.
