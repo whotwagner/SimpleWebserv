@@ -25,6 +25,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 #define MAX_BUF_LEN 1024
 #define MAX_METHOD_LEN 10
